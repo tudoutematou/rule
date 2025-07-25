@@ -39,7 +39,6 @@
  * [blockquic] blockquic=on 阻止; blockquic=off 不阻止
  */
 
-// const inArg = {'blkey':'iplc+GPT>GPTnewName+NF+IPLC', 'flag':true };
 const inArg = $arguments; // console.log(inArg)
 const nx = inArg.nx || false,
   bl = inArg.bl || false,
@@ -155,17 +154,21 @@ function operator(pro) {
     });
   });
 
-  if (clear || nx || blnx || key) {
+  // ——【修改点】—— 保留线路、倍率信息，调整过滤逻辑——
+  if (clear || key) {
     pro = pro.filter((res) => {
       const resname = res.name;
-      const shouldKeep =
-        !(clear && nameclear.test(resname)) &&
-        !(nx && namenx.test(resname)) &&
-        !(blnx && !nameblnx.test(resname)) &&
-        !(key && !(keya.test(resname) && /2|4|6|7/i.test(resname)));
-      return shouldKeep;
+
+      // 只过滤"无用"杂乱名称节点
+      const isUseless = clear && nameclear.test(resname);
+
+      // key 过滤项，按需处理，默认关闭可用 false
+      const failKeyFilter = key && !(keya.test(resname) && /2|4|6|7/i.test(resname));
+
+      return !isUseless && !failKeyFilter;
     });
   }
+  // ——【结束修改】——
 
   const BLKEYS = BLKEY ? BLKEY.split("+") : "";
 
@@ -175,28 +178,29 @@ function operator(pro) {
     Object.keys(rurekey).forEach((ikey) => {
       if (rurekey[ikey].test(e.name)) {
         e.name = e.name.replace(rurekey[ikey], ikey);
-      if (BLKEY) {
-        bktf = true
-        let BLKEY_REPLACE = "",
-        re = false;
-      BLKEYS.forEach((i) => {
-        if (i.includes(">") && ens.includes(i.split(">")[0])) {
-          if (rurekey[ikey].test(i.split(">")[0])) {
-              e.name += " " + i.split(">")[0]
+        if (BLKEY) {
+          bktf = true
+          let BLKEY_REPLACE = "",
+          re = false;
+          BLKEYS.forEach((i) => {
+            if (i.includes(">") && ens.includes(i.split(">")[0])) {
+              if (rurekey[ikey].test(i.split(">")[0])) {
+                e.name += " " + i.split(">")[0]
+              }
+              if (i.split(">")[1]) {
+                BLKEY_REPLACE = i.split(">")[1];
+                re = true;
+              }
+            } else {
+              if (ens.includes(i)) {
+                e.name += " " + i
+              }
             }
-          if (i.split(">")[1]) {
-            BLKEY_REPLACE = i.split(">")[1];
-            re = true;
-          }
-        } else {
-          if (ens.includes(i)) {
-             e.name += " " + i
-            }
+            retainKey = re
+              ? BLKEY_REPLACE
+              : BLKEYS.filter((items) => e.name.includes(items));
+          });
         }
-        retainKey = re
-        ? BLKEY_REPLACE
-        : BLKEYS.filter((items) => e.name.includes(items));
-      });}
       }
     });
     if (blockquic == "on") {
@@ -207,7 +211,7 @@ function operator(pro) {
       delete e["block-quic"];
     }
 
-    // 自定义
+    // 自定义关键词保留处理
     if (!bktf && BLKEY) {
       let BLKEY_REPLACE = "",
         re = false;
@@ -226,7 +230,7 @@ function operator(pro) {
 
     let ikey = "",
       ikeys = "";
-    // 保留固定格式 倍率
+    // 保留固定格式 倍率关键词等
     if (blgd) {
       regexArray.forEach((regex, index) => {
         if (regex.test(e.name)) {
@@ -235,7 +239,7 @@ function operator(pro) {
       });
     }
 
-    // 正则 匹配倍率
+    // 正则匹配倍率数字或倍率符号
     if (bl) {
       const match = e.name.match(
         /((倍率|X|x|×)\D?((\d{1,3}\.)?\d+)\D?)|((\d{1,3}\.)?\d+)(倍|X|x|×)/
@@ -250,7 +254,7 @@ function operator(pro) {
     }
 
     !GetK && ObjKA(Allmap)
-    // 匹配 Allkey 地区
+    // 匹配对应国家等地区名称
     const findKey = AMK.find(([key]) =>
       e.name.includes(key)
     )
@@ -258,6 +262,7 @@ function operator(pro) {
     let firstName = "",
       nNames = "";
 
+    // nf参数控制 name=前缀位置
     if (nf) {
       firstName = FNAME;
     } else {
@@ -299,6 +304,6 @@ function getList(arg) { switch (arg) { case 'us': return EN; case 'gq': return F
 // prettier-ignore
 function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name === n.name); if (t) { t.count++; t.items.push({ ...n, name: `${n.name}${XHFGF}${t.count.toString().padStart(2, "0")}`, }); } else { e.push({ name: n.name, count: 1, items: [{ ...n, name: `${n.name}${XHFGF}01` }], }); } return e; }, []);const t=(typeof Array.prototype.flatMap==='function'?n.flatMap((e) => e.items):n.reduce((acc, e) => acc.concat(e.items),[])); e.splice(0, e.length, ...t); return e;}
 // prettier-ignore
-function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) {/* const n = t[e][0]; n.name = e;*/ t[e][0].name= t[e][0].name.replace(/[^.]01/, "") } } return e; }
+function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) { t[e][0].name = t[e][0].name.replace(/[^.]01/, ""); } } return e; }
 // prettier-ignore
 function fampx(pro) { const wis = []; const wnout = []; for (const proxy of pro) { const fan = specialRegex.some((regex) => regex.test(proxy.name)); if (fan) { wis.push(proxy); } else { wnout.push(proxy); } } const sps = wis.map((proxy) => specialRegex.findIndex((regex) => regex.test(proxy.name)) ); wis.sort( (a, b) => sps[wis.indexOf(a)] - sps[wis.indexOf(b)] || a.name.localeCompare(b.name) ); wnout.sort((a, b) => pro.indexOf(a) - pro.indexOf(b)); return wnout.concat(wis);}
